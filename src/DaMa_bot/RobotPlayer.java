@@ -1,8 +1,6 @@
 package DaMa_bot;
 import battlecode.common.*;
 
-import java.util.Map;
-
 public strictfp class RobotPlayer {
     static RobotController rc;
 
@@ -146,14 +144,14 @@ public strictfp class RobotPlayer {
         }
 
         // If we saw a murk, empower w 40% chance
-        if (seeMurk == true && Math.random() >= .4){
+        if (seeMurk && Math.random() >= .4){
             if (rc.canEmpower(actionRadius)){
                 rc.empower(actionRadius);
                 return;
             }
         }
 
-        // 3+ enemies around it
+        // Empower if 3+ enemies around it
         if (attackable.length >= 3 && rc.canEmpower(actionRadius)) {
             System.out.println("empowering...");
             rc.empower(actionRadius);
@@ -161,7 +159,7 @@ public strictfp class RobotPlayer {
             return;
         }
 
-        //Move towards groups of enemies
+        //Move towards groups of 3 enemies
         if (sensed.length >= 3) {
             for (RobotInfo enemy : sensed) {
                 // move toward one of them
@@ -179,6 +177,7 @@ public strictfp class RobotPlayer {
             System.out.println("I moved!");
             return;
         }
+
         //randomly move
         if (tryMove(randomDirection()))
             System.out.println("I moved!");
