@@ -71,7 +71,7 @@ public strictfp class RobotPlayer {
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
 
         //bids
-        if (currInfluence > 90) {
+        if (currInfluence > 100) {
             if (rc.canBid(currInfluence/3)) {
                 currInfluence -= currInfluence/3;
                 rc.bid(currInfluence/3);
@@ -79,7 +79,7 @@ public strictfp class RobotPlayer {
         }
 
         // Want to conserve some influence
-        if (currInfluence <= 40) {
+        if (currInfluence <= 50) {
             return;
         }
 
@@ -94,7 +94,7 @@ public strictfp class RobotPlayer {
 
         //choose what robot to build
         RobotType toBuild;
-        int buildInfluence = (int) (currInfluence/1.5);
+        int buildInfluence = (int) (currInfluence/2);
         if (buildInfluence < 35) {
             buildInfluence = buildInfluence/2;
             toBuild  = randomSpawnableRobotType_noPol();
@@ -119,7 +119,7 @@ public strictfp class RobotPlayer {
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
         boolean seeMurk = false;
 
-        // Sees a base or muckraker
+        // Can attack a base or muckraker
         for (RobotInfo enemy : attackable) {
             if (enemy.type.canBid()){
                 if (rc.canEmpower(actionRadius)){
@@ -131,7 +131,18 @@ public strictfp class RobotPlayer {
             if (enemy.type.canExpose()) {
                 seeMurk = true;
             }
+        }
 
+        // Move toward a sensed enemy base
+        for (RobotInfo enemy : sensed) {
+            if (enemy.getType().canBid()){
+                MapLocation currentloc = rc.getLocation();
+                Direction dirMove = currentloc.directionTo(enemy.getLocation());
+                if (rc.canMove(dirMove)) {
+                    rc.move(dirMove);
+                    return;
+                }
+            }
         }
 
         // If we saw a murk, empower w 50% chance
