@@ -1,6 +1,6 @@
-# Battlecode 2021 Scaffold
+# DaMa bot Battlecode 2021 
 
-This is the Battlecode 2021 scaffold, containing an `examplefuncsplayer`. Read https://2021.battlecode.org/getting-started!
+This is the DaMa bot. Read https://2021.battlecode.org/getting-started!
 
 ### Project Structure
 
