@@ -1,6 +1,8 @@
 package DaMa_bot;
 import battlecode.common.*;
 
+import java.util.Map;
+
 public strictfp class RobotPlayer {
     static RobotController rc;
 
@@ -62,24 +64,48 @@ public strictfp class RobotPlayer {
     }
 
     static void runEnlightenmentCenter() throws GameActionException {
+        Team enemyTeam = rc.getTeam().opponent();
+        Team allyTeam = rc.getTeam();
         int currInfluence = rc.getInfluence(); //gets current influence
+        int senseRadius = rc.getType().sensorRadiusSquared;
+        RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
+
         //bids
-        if (currInfluence > 80) {
-            if (rc.canBid(currInfluence/2)) {
-                rc.bid(currInfluence/2);
+        if (currInfluence > 90) {
+            if (rc.canBid(currInfluence/3)) {
+                currInfluence -= currInfluence/3;
+                rc.bid(currInfluence/3);
             }
         }
-        //builds robot
+
+        // Want to conserve some influence
+        if (currInfluence <= 40) {
+            return;
+        }
+
+        //Sense 3+ enemies in vicinity
+        if (sensed.length >= 3) {
+            for (Direction dir : directions) {
+                if (rc.canBuildRobot(RobotType.POLITICIAN, dir, currInfluence/2)) {
+                    rc.buildRobot(RobotType.POLITICIAN, dir, currInfluence/2);
+                }
+            }
+        }
+
+        //choose what robot to build
         RobotType toBuild;
-        int influence = (int) (currInfluence/2.5);
-        if (influence < 30) {
+        int buildInfluence = (int) (currInfluence/1.5);
+        if (buildInfluence < 35) {
+            buildInfluence = buildInfluence/2;
             toBuild  = randomSpawnableRobotType_noPol();
         } else {
             toBuild  = randomSpawnableRobotType();
         }
+
+        //builds robot
         for (Direction dir : directions) {
-            if (rc.canBuildRobot(toBuild, dir, influence)) {
-                rc.buildRobot(toBuild, dir, influence);
+            if (rc.canBuildRobot(toBuild, dir, buildInfluence)) {
+                rc.buildRobot(toBuild, dir, buildInfluence);
             }
         }
     }
@@ -88,26 +114,60 @@ public strictfp class RobotPlayer {
         Team enemyTeam = rc.getTeam().opponent();
         Team allyTeam = rc.getTeam();
         int actionRadius = rc.getType().actionRadiusSquared;
+        int senseRadius = rc.getType().sensorRadiusSquared;
         RobotInfo[] attackable = rc.senseNearbyRobots(actionRadius, enemyTeam);
+        RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
+        boolean seeMurk = false;
 
-        // Sees a base
-        for (RobotInfo robot : attackable) {
-            if (robot.type.canBid()){
+        // Sees a base or muckraker
+        for (RobotInfo enemy : attackable) {
+            if (enemy.type.canBid()){
                 if (rc.canEmpower(actionRadius)){
                     rc.empower(actionRadius);
                     return;
                 }
             }
+            // finds a muckraker
+            if (enemy.type.canExpose()) {
+                seeMurk = true;
+            }
+
         }
 
-        // 2+ enemies around it
-        if (attackable.length >= 2 && rc.canEmpower(actionRadius)) {
+        // If we saw a murk, empower w 50% chance
+        if (seeMurk == true && Math.random() >= .5){
+            if (rc.canEmpower(actionRadius)){
+                rc.empower(actionRadius);
+                return;
+            }
+        }
+
+        // 3+ enemies around it
+        if (attackable.length >= 3 && rc.canEmpower(actionRadius)) {
             System.out.println("empowering...");
             rc.empower(actionRadius);
             System.out.println("empowered");
             return;
         }
 
+        //Move towards groups of enemies
+        if (sensed.length >= 3) {
+            for (RobotInfo enemy : sensed) {
+                // move toward one of them
+                MapLocation currentloc = rc.getLocation();
+                Direction dirMove = currentloc.directionTo(enemy.getLocation());
+                if (rc.canMove(dirMove)) {
+                    rc.move(dirMove);
+                    return;
+                }
+            }
+        }
+
+        //Move w certain chance in best direction w largest passability
+        if (tryMove(findBestDirection())) {
+            System.out.println("I moved!");
+            return;
+        }
         //randomly move
         if (tryMove(randomDirection()))
             System.out.println("I moved!");
@@ -116,7 +176,29 @@ public strictfp class RobotPlayer {
     static void runSlanderer() throws GameActionException {
         Team enemyTeam = rc.getTeam().opponent();
         Team allyTeam = rc.getTeam();
+        int senseRadius = rc.getType().sensorRadiusSquared;
+        RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
 
+        //Move away from mucks or pols
+        for (RobotInfo enemy : sensed) {
+            // move away from a muck or pol
+            if (enemy.getType().canEmpower() || enemy.type.canExpose()){
+                MapLocation currentloc = rc.getLocation();
+                Direction dirMove = currentloc.directionTo(enemy.getLocation()).opposite();
+                if (rc.canMove(dirMove)) {
+                    rc.move(dirMove);
+                    return;
+                }
+            }
+        }
+
+        //Move w certain chance in best direction w largest passability
+        if (tryMove(findBestDirection())) {
+            System.out.println("I moved!");
+            return;
+        }
+
+        //Move randomly
         if (tryMove(randomDirection()))
             System.out.println("I moved!");
     }
@@ -125,18 +207,58 @@ public strictfp class RobotPlayer {
         Team enemyTeam = rc.getTeam().opponent();
         Team allyTeam = rc.getTeam();
         int actionRadius = rc.getType().actionRadiusSquared;
+        int senseRadius = rc.getType().sensorRadiusSquared;
+        int detectRadius = rc.getType().detectionRadiusSquared;
+
+        RobotInfo[] attackable = rc.senseNearbyRobots(actionRadius, enemyTeam);
+        RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
+        RobotInfo[] detected = rc.senseNearbyRobots(detectRadius, enemyTeam);
 
         // If there is a slanderer nearby
-        for (RobotInfo robot : rc.senseNearbyRobots(actionRadius, enemyTeam)) {
-            if (robot.type.canBeExposed()) {
+        for (RobotInfo enemy : attackable) {
+            if (enemy.type.canBeExposed()) {
                 // It's a slanderer... go get them!
-                if (rc.canExpose(robot.location)) {
+                if (rc.canExpose(enemy.location)) {
                     System.out.println("e x p o s e d");
-                    rc.expose(robot.location);
+                    rc.expose(enemy.location);
                     return;
                 }
             }
         }
+
+        //If we sense a slanderer
+        for (RobotInfo enemy : sensed) {
+            if (enemy.type.canBeExposed()){
+                // move toward a slanderer
+                MapLocation currentloc = rc.getLocation();
+                Direction dirMove = currentloc.directionTo(enemy.getLocation());
+                if (rc.canMove(dirMove)) {
+                    rc.move(dirMove);
+                    return;
+                }
+            }
+        }
+
+        //Move towards groups of enemies
+        if (sensed.length >= 3) {
+            for (RobotInfo enemy : sensed) {
+                // move toward one of them
+                MapLocation currentloc = rc.getLocation();
+                Direction dirMove = currentloc.directionTo(enemy.getLocation());
+                if (rc.canMove(dirMove)) {
+                    rc.move(dirMove);
+                    return;
+                }
+            }
+        }
+
+        //Move w certain chance in best direction w largest passability
+        if (tryMove(findBestDirection())) {
+            System.out.println("I moved!");
+            return;
+        }
+
+        //Move randomly
         if (tryMove(randomDirection()))
             System.out.println("I moved!");
     }
@@ -151,6 +273,28 @@ public strictfp class RobotPlayer {
     }
 
     /**
+     * Returns available direction with highest passability. Only 60% chance to actually return that direction
+     *
+     * @return best direction
+     */
+    static Direction findBestDirection() throws GameActionException {
+        double maxPassability = 0.1;
+        Direction bestDir = Direction.NORTH;
+        MapLocation current = rc.getLocation();
+        for (Direction dir : directions) {
+            MapLocation possibleMove = current.add(dir);
+            if (rc.canSenseLocation(possibleMove)) {
+                double possiblePassability = rc.sensePassability(possibleMove);
+                if (possiblePassability > maxPassability && Math.random() > .40) {
+                    maxPassability = possiblePassability;
+                    bestDir = dir;
+                }
+            }
+        }
+        return bestDir;
+    }
+
+    /**
      * Returns a random spawnable RobotType
      *
      * @return a random RobotType
@@ -158,7 +302,6 @@ public strictfp class RobotPlayer {
     static RobotType randomSpawnableRobotType() {
         RobotType[] listOfRobots= {RobotType.POLITICIAN, RobotType.POLITICIAN,RobotType.POLITICIAN,
                 RobotType.POLITICIAN, RobotType.POLITICIAN,
-                RobotType.SLANDERER,RobotType.SLANDERER,
                 RobotType.SLANDERER,RobotType.SLANDERER,
                 RobotType.MUCKRAKER,RobotType.MUCKRAKER,};
         return listOfRobots[(int) (Math.random() * listOfRobots.length)];
