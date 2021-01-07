@@ -145,8 +145,8 @@ public strictfp class RobotPlayer {
             }
         }
 
-        // If we saw a murk, empower w 50% chance
-        if (seeMurk == true && Math.random() >= .5){
+        // If we saw a murk, empower w 40% chance
+        if (seeMurk == true && Math.random() >= .4){
             if (rc.canEmpower(actionRadius)){
                 rc.empower(actionRadius);
                 return;
