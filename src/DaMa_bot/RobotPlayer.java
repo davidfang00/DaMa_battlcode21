@@ -295,13 +295,26 @@ public strictfp class RobotPlayer {
             MapLocation possibleMove = current.add(dir);
             if (rc.canSenseLocation(possibleMove)) {
                 double possiblePassability = rc.sensePassability(possibleMove);
-                if (possiblePassability > maxPassability && Math.random() > .40) {
+                if (possiblePassability > maxPassability && Math.random() > .40 && rc.canMove(dir)) {
                     maxPassability = possiblePassability;
                     bestDir = dir;
                 }
             }
         }
         return bestDir;
+    }
+
+    /**
+     * Attempts to set a flag with given int.
+     *
+     * @return boolean
+     */
+    static boolean trySetFlag(int flagNum) throws GameActionException {
+        System.out.println("I am trying to set flag " + flagNum + ".");
+        if (rc.canSetFlag(flagNum)) {
+            rc.setFlag(flagNum);
+            return true;
+        } else return false;
     }
 
     /**
@@ -313,7 +326,7 @@ public strictfp class RobotPlayer {
         RobotType[] listOfRobots= {RobotType.POLITICIAN, RobotType.POLITICIAN,RobotType.POLITICIAN,
                 RobotType.POLITICIAN, RobotType.POLITICIAN,
                 RobotType.SLANDERER,RobotType.SLANDERER,
-                RobotType.MUCKRAKER,RobotType.MUCKRAKER,};
+                RobotType.MUCKRAKER,};
         return listOfRobots[(int) (Math.random() * listOfRobots.length)];
     }
 
