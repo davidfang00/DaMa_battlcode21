@@ -102,29 +102,42 @@ public strictfp class RobotPlayer {
         RobotType toBuild;
         boolean buildBool;
         int buildInfluence = (int) (currInfluence/2);
+        double polPercent;
+
+        if (turnCount < 400) {
+            polPercent = .75;
+        } else {
+            polPercent = .5;
+        }
+
         if (buildInfluence < 25) {
             buildBool = Math.random() > .4;
             buildInfluence /= 2;
             toBuild = RobotType.MUCKRAKER;
-
         } else {
             buildBool = Math.random() > .3;
             double percent = Math.random();
-            if (percent > .5) {
+            if (percent > polPercent) {
                 toBuild = RobotType.POLITICIAN;
-            } else if (percent > .25) {
+            } else if (percent > .2) {
+                buildInfluence = buildInfluence - buildInfluence % 20 + 1;
                 toBuild = RobotType.SLANDERER;
             } else {
+                buildInfluence /= 2;
                 toBuild = RobotType.MUCKRAKER;
             }
         }
 
-        //builds robot
-        for (Direction dir : directions) {
-            if (rc.canBuildRobot(toBuild, dir, buildInfluence) && buildBool) {
-                System.out.println("I made a "+ toBuild + ".");
-                rc.buildRobot(toBuild, dir, buildInfluence);
-                return;
+        //builds robot in random direction
+        if (buildBool) {
+            List<Direction> shuffledDir =  Arrays.asList(directions);
+            Collections.shuffle(shuffledDir);
+            for (Direction dir : shuffledDir) {
+                if (rc.canBuildRobot(toBuild, dir, buildInfluence)) {
+                    System.out.println("I made a "+ toBuild + ".");
+                    rc.buildRobot(toBuild, dir, buildInfluence);
+                    return;
+                }
             }
         }
     }
@@ -155,6 +168,17 @@ public strictfp class RobotPlayer {
             }
         }
 
+        // Move toward a sensed enemy base
+        for (RobotInfo enemy : sensed) {
+            if (enemy.getType().canBid()){
+                Direction dirMove = currentloc.directionTo(enemy.getLocation());
+                if (rc.canMove(dirMove)) {
+                    rc.move(dirMove);
+                    return;
+                }
+            }
+        }
+
         // Attack neutral base if < 100 influence
         for (RobotInfo neutral : attackableNeutral) {
             if (neutral.type.canBid() && neutral.getInfluence() <= 100){
@@ -182,17 +206,6 @@ public strictfp class RobotPlayer {
             }
             if (neutral.getType().canBid() && Math.random() > .5){
                 Direction dirMove = currentloc.directionTo(neutral.getLocation());
-                if (rc.canMove(dirMove)) {
-                    rc.move(dirMove);
-                    return;
-                }
-            }
-        }
-
-        // Move toward a sensed enemy base
-        for (RobotInfo enemy : sensed) {
-            if (enemy.getType().canBid()){
-                Direction dirMove = currentloc.directionTo(enemy.getLocation());
                 if (rc.canMove(dirMove)) {
                     rc.move(dirMove);
                     return;
@@ -306,7 +319,7 @@ public strictfp class RobotPlayer {
         }
 
         //Move towards groups of enemies
-        if (sensed.length >= 3) {
+        if (sensed.length >= 2) {
             for (RobotInfo enemy : sensed) {
                 // move toward one of them
                 Direction dirMove = currentloc.directionTo(enemy.getLocation());
@@ -338,7 +351,7 @@ public strictfp class RobotPlayer {
     }
 
     /**
-     * Returns available direction with highest passability. Only 60% chance to actually return that direction
+     * Returns available direction with highest passability. Only 50% chance to actually return that direction
      *
      * @return best direction
      */
@@ -352,7 +365,7 @@ public strictfp class RobotPlayer {
             MapLocation possibleMove = current.add(dir);
             if (rc.canSenseLocation(possibleMove)) {
                 double possiblePassability = rc.sensePassability(possibleMove);
-                if (possiblePassability > maxPassability && Math.random() > .40 && rc.canMove(dir)) {
+                if (possiblePassability > maxPassability && Math.random() > .50 && rc.canMove(dir)) {
                     maxPassability = possiblePassability;
                     bestDir = dir;
                 }
