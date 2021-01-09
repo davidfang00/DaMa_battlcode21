@@ -91,26 +91,34 @@ public strictfp class RobotPlayer {
             return;
         }
 
-        //Sense 3+ enemies in vicinity, so build politicians to kill them
-        if (sensed.length >= 3) {
+        //Sense 3-10 enemies in vicinity, so build politicians to kill them
+        if (sensed.length >= 3 && sensed.length < 10) {
             for (Direction dir : directions) {
                 if (rc.canBuildRobot(RobotType.POLITICIAN, dir, currInfluence/2)) {
                     rc.buildRobot(RobotType.POLITICIAN, dir, currInfluence/2);
                     return;
                 }
             }
+        } else if (sensed.length > 15) { //Too many enemies surrounding
+            return;
         }
 
         //choose what robot to build
         RobotType toBuild;
         boolean buildBool;
-        int buildInfluence = (int) (currInfluence/2);
+        int buildInfluence = currInfluence/2;
         double polPercent;
+        double slanPercent;
 
         if (turnCount < 400) {
             polPercent = .75;
+            slanPercent = .2;
+        } else if (turnCount < 2000) {
+            polPercent = .5;
+            slanPercent = .2;
         } else {
             polPercent = .5;
+            slanPercent = .1;
         }
 
         if (buildInfluence < 25) {
@@ -122,7 +130,7 @@ public strictfp class RobotPlayer {
             double percent = Math.random();
             if (percent > polPercent) {
                 toBuild = RobotType.POLITICIAN;
-            } else if (percent > .2) {
+            } else if (percent > slanPercent) {
                 buildInfluence = buildInfluence - buildInfluence % 20 + 1;
                 toBuild = RobotType.SLANDERER;
             } else {
@@ -133,15 +141,7 @@ public strictfp class RobotPlayer {
 
         //builds robot in random direction
         if (buildBool) {
-            List<Direction> shuffledDir =  Arrays.asList(directions);
-            Collections.shuffle(shuffledDir);
-            for (Direction dir : shuffledDir) {
-                if (rc.canBuildRobot(toBuild, dir, buildInfluence)) {
-                    System.out.println("I made a "+ toBuild + ".");
-                    rc.buildRobot(toBuild, dir, buildInfluence);
-                    return;
-                }
-            }
+            buildRobot(toBuild, buildInfluence);
         }
     }
 
@@ -247,10 +247,12 @@ public strictfp class RobotPlayer {
         //Decode neighboring flags
         for (RobotInfo ally : sensedAlly) {
              int allyFlag = rc.getFlag(ally.getID());
-             if (allyFlag > 1) {
+             if (allyFlag > 10) {
                 enemyBaseLoc = decodeFlag(allyFlag);
                 System.out.println("Decoded a flag with location: " + enemyBaseLoc);
-                trySetFlag(allyFlag); //Set own Flag as the same
+                if (trySetFlag(allyFlag)) {
+                    System.out.println("Set flag: "+allyFlag); //Set own Flag as the same
+                }
                 break;
              }
         }
@@ -298,6 +300,15 @@ public strictfp class RobotPlayer {
 
         //Move away from mucks or pols
         for (RobotInfo enemy : sensed) {
+            //Sense enemy base
+            if (enemy.getType().canBid()) {
+                MapLocation enemyLoc = enemy.getLocation();
+                int flagNum = codeFlag(enemyLoc, 0); // Set a flag for enemy base location
+                if (trySetFlag(flagNum)) {
+                    System.out.println("Set Flag: " + flagNum);
+                }
+            }
+
             // move away from a muck or pol
             if (enemy.getType().canEmpower() || enemy.getType().canExpose()){
                 MapLocation currentloc = rc.getLocation();
@@ -342,20 +353,20 @@ public strictfp class RobotPlayer {
 
         //If we sense a slanderer or enemy base
         for (RobotInfo enemy : sensed) {
-            //Sense slanderer
-            if (enemy.getType().canBeExposed()) {
-                Direction dirMove = currentloc.directionTo(enemy.getLocation());
-                if (rc.canMove(dirMove)) { // move toward a slanderer
-                    rc.move(dirMove);
-                    return;
-                }
-            }
             //Sense enemy base
             if (enemy.getType().canBid()) {
                 MapLocation enemyLoc = enemy.getLocation();
                 int flagNum = codeFlag(enemyLoc, 0); // Set a flag for enemy base location
                 if (trySetFlag(flagNum)) {
                     System.out.println("Set Flag: " + flagNum);
+                }
+            }
+            //Sense slanderer
+            if (enemy.getType().canBeExposed()) {
+                Direction dirMove = currentloc.directionTo(enemy.getLocation());
+                if (rc.canMove(dirMove)) { // move toward a slanderer
+                    rc.move(dirMove);
+                    return;
                 }
             }
         }
@@ -473,6 +484,26 @@ public strictfp class RobotPlayer {
      static void findPath(){
          // something
      }
+
+    /**
+     * Attempts to build robot in a random direction.
+     *
+     * @param toBuild robot type
+     * @return true if a move was performed
+     */
+
+    static boolean buildRobot(RobotType toBuild, int buildInfluence) throws GameActionException{
+        List<Direction> shuffledDir =  Arrays.asList(directions);
+        Collections.shuffle(shuffledDir);
+        for (Direction dir : shuffledDir) {
+            if (rc.canBuildRobot(toBuild, dir, buildInfluence)) {
+                System.out.println("I made a "+ toBuild + " in " + dir);
+                rc.buildRobot(toBuild, dir, buildInfluence);
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Attempts to move in a given direction.
