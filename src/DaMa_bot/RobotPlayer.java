@@ -26,6 +26,10 @@ public strictfp class RobotPlayer {
     static MapLocation enemyBaseLoc = new MapLocation(0, 0);
     static int homeID;
     static MapLocation homeLoc;
+    static Direction directionality;
+    static Direction[] opposites;
+    static Direction[] inDirection;
+
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -39,6 +43,16 @@ public strictfp class RobotPlayer {
         RobotPlayer.rc = rc;
 
         turnCount = 0;
+        if (Math.random() > .7) {
+            directionality = directions[(int) (Math.random() * directions.length)];
+            opposites = new Direction[] {directionality.opposite(),
+                    directionality.opposite().rotateLeft(), directionality.opposite().rotateRight(),
+                    directionality.rotateRight().rotateRight(), directionality.rotateLeft().rotateLeft()};
+            inDirection = new Direction[] {directionality, directionality,
+                    directionality.rotateLeft(), directionality.rotateRight()};
+        } else {
+            directionality = Direction.CENTER;
+        }
 
         System.out.println("I'm a " + rc.getType() + " and I just got created!");
         while (true) {
@@ -99,7 +113,7 @@ public strictfp class RobotPlayer {
                     return;
                 }
             }
-        } else if (sensed.length > 15) { //Too many enemies surrounding
+        } else if (sensed.length > 15) { //Too many enemies surrounding, just turtle up
             return;
         }
 
@@ -114,11 +128,11 @@ public strictfp class RobotPlayer {
             polPercent = .75;
             slanPercent = .2;
         } else if (turnCount < 2000) {
-            polPercent = .5;
-            slanPercent = .2;
+            polPercent = .4;
+            slanPercent = .15;
         } else {
             polPercent = .5;
-            slanPercent = .1;
+            slanPercent = .07;
         }
 
         if (buildInfluence < 25) {
@@ -160,15 +174,16 @@ public strictfp class RobotPlayer {
 
         boolean seeMurk = false;
 
-        if (turnCount <= 13) {
+        if (turnCount <= 12) {
             for (RobotInfo ally :closeSensedAlly) {
                 if (ally.getType().canBid()){
                     homeID = ally.getID();
                     homeLoc = ally.getLocation();
                 }
             }
+        } else if (turnCount > 800) {
+            directionality = Direction.CENTER;
         }
-
 
         // Can attack an enemy base or muckraker
         for (RobotInfo enemy : attackable) {
@@ -285,10 +300,17 @@ public strictfp class RobotPlayer {
             }
         }
 
-        //Move w certain chance in best direction w largest passability
-        if (tryMove(findBestDirection())) {
-            System.out.println("I moved!");
-            return;
+        //Move w certain chance in best direction w largest passability or based on directionality
+        if (directionality.equals(Direction.CENTER)) {
+            if (tryMove(findBestDirection())) {
+                System.out.println("I moved randomly!");
+                return;
+            }
+        } else {
+            if (tryMove(moveDirectionally(directionality))){
+                System.out.println("I moved directionally!");
+                return;
+            }
         }
     }
 
@@ -297,6 +319,10 @@ public strictfp class RobotPlayer {
         Team allyTeam = rc.getTeam();
         int senseRadius = rc.getType().sensorRadiusSquared;
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
+
+        if (turnCount > 800) {
+            directionality = Direction.CENTER;
+        }
 
         //Move away from mucks or pols
         for (RobotInfo enemy : sensed) {
@@ -320,10 +346,17 @@ public strictfp class RobotPlayer {
             }
         }
 
-        //Move w certain chance in best direction w largest passability
-        if (tryMove(findBestDirection())) {
-            System.out.println("I moved!");
-            return;
+        //Move w certain chance in best direction w largest passability or based on directionality
+        if (directionality.equals(Direction.CENTER)) {
+            if (tryMove(findBestDirection())) {
+                System.out.println("I moved randomly!");
+                return;
+            }
+        } else {
+            if (tryMove(moveDirectionally(directionality))){
+                System.out.println("I moved directionally!");
+                return;
+            }
         }
     }
 
@@ -338,6 +371,10 @@ public strictfp class RobotPlayer {
         RobotInfo[] attackable = rc.senseNearbyRobots(actionRadius, enemyTeam);
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
         RobotInfo[] detected = rc.senseNearbyRobots(detectRadius, enemyTeam);
+
+        if (turnCount > 800) {
+            directionality = Direction.CENTER;
+        }
 
         // If there is a slanderer nearby
         for (RobotInfo enemy : attackable) {
@@ -383,40 +420,18 @@ public strictfp class RobotPlayer {
             }
         }
 
-        //Move w certain chance in best direction w largest passability
-        if (tryMove(findBestDirection())) {
-            System.out.println("I moved!");
-            return;
-        }
-    }
-
-    /**
-     * Returns available direction with highest passability.
-     * Can choose random direction with 10%.
-     * Only 50% chance to actually return that direction
-     *
-     * @return best direction
-     */
-    static Direction findBestDirection() throws GameActionException {
-        double maxPassability = 0.1;
-        MapLocation current = rc.getLocation();
-        List<Direction> shuffledDir =  Arrays.asList(directions);
-        Collections.shuffle(shuffledDir);
-        Direction bestDir = shuffledDir.get(0);
-
-        if (Math.random() > .10) { // 10% chance its random
-            for (Direction dir : shuffledDir) {
-                MapLocation possibleMove = current.add(dir);
-                if (rc.canSenseLocation(possibleMove)) {
-                    double possiblePassability = rc.sensePassability(possibleMove);
-                    if (possiblePassability > maxPassability && Math.random() > .40 && rc.canMove(dir)) {
-                        maxPassability = possiblePassability;
-                        bestDir = dir;
-                    }
-                }
+        //Move w certain chance in best direction w largest passability or based on directionality
+        if (directionality.equals(Direction.CENTER)) {
+            if (tryMove(findBestDirection())) {
+                System.out.println("I moved randomly!");
+                return;
+            }
+        } else {
+            if (tryMove(moveDirectionally(directionality))){
+                System.out.println("I moved directionally!");
+                return;
             }
         }
-        return bestDir;
     }
 
     /**
@@ -477,15 +492,6 @@ public strictfp class RobotPlayer {
     }
 
     /**
-     * Returns a path
-     *
-     * @return Direction
-     */
-     static void findPath(){
-         // something
-     }
-
-    /**
      * Attempts to build robot in a random direction.
      *
      * @param toBuild robot type
@@ -504,6 +510,61 @@ public strictfp class RobotPlayer {
         }
         return false;
     }
+
+    /**
+     * Returns a path
+     *
+     * @return Direction
+     */
+    static void findPath(){
+        // something
+    }
+
+    /**
+     * Returns available direction with highest passability.
+     * Can choose random direction with 10%.
+     * Only 50% chance to actually return that direction
+     *
+     * @return best direction
+     */
+    static Direction findBestDirection() throws GameActionException {
+        double maxPassability = 0.1;
+        MapLocation current = rc.getLocation();
+        List<Direction> shuffledDir =  Arrays.asList(directions);
+        Collections.shuffle(shuffledDir);
+        Direction bestDir = shuffledDir.get(0);
+
+        if (Math.random() > .10) { // 10% chance its random
+            for (Direction dir : shuffledDir) {
+                MapLocation possibleMove = current.add(dir);
+                if (rc.canSenseLocation(possibleMove)) {
+                    double possiblePassability = rc.sensePassability(possibleMove);
+                    if (possiblePassability > maxPassability && Math.random() > .40 && rc.canMove(dir)) {
+                        maxPassability = possiblePassability;
+                        bestDir = dir;
+                    }
+                }
+            }
+        }
+        return bestDir;
+    }
+
+    /**
+     * Attempts to move in a general given direction.
+     *
+     * @param dir The general direction of movement
+     * @return direction
+     */
+    static Direction moveDirectionally(Direction dir){
+        Direction finalDir;
+        if (Math.random() > .6) {
+            finalDir = opposites[(int) (Math.random() * opposites.length)];
+        } else {
+            finalDir = inDirection[(int) (Math.random() * inDirection.length)];
+        }
+        return finalDir;
+    }
+
 
     /**
      * Attempts to move in a given direction.
