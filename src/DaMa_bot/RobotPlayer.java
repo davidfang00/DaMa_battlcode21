@@ -131,7 +131,7 @@ public strictfp class RobotPlayer {
             polPercent = .4;
             slanPercent = .15;
         } else {
-            polPercent = .5;
+            polPercent = .4;
             slanPercent = .07;
         }
 
@@ -271,19 +271,19 @@ public strictfp class RobotPlayer {
             }
         }
 
+        // If we saw a murk, empower w 40% chance
+        if (seeMurk && Math.random() >= .6){
+            if (rc.canEmpower(actionRadius)){
+                rc.empower(actionRadius);
+                return;
+            }
+        }
+
         // Move toward enemyBase if not (0,0)
         if (enemyBaseLoc.x != 0 && enemyBaseLoc.y != 0) {
             Direction dirMove = currentloc.directionTo(enemyBaseLoc);
             if (rc.canMove(dirMove)) {
                 rc.move(dirMove);
-                return;
-            }
-        }
-
-        // If we saw a murk, empower w 40% chance
-        if (seeMurk && Math.random() >= .4){
-            if (rc.canEmpower(actionRadius)){
-                rc.empower(actionRadius);
                 return;
             }
         }
