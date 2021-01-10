@@ -125,7 +125,7 @@ public strictfp class RobotPlayer {
         double slanPercent;
 
         if (turnCount < 400) {
-            polPercent = .75;
+            polPercent = .7;
             slanPercent = .2;
         } else if (turnCount < 2000) {
             polPercent = .4;
@@ -170,12 +170,11 @@ public strictfp class RobotPlayer {
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
         RobotInfo[] sensedNeutral = rc.senseNearbyRobots(senseRadius, Team.NEUTRAL);
         RobotInfo[] sensedAlly = rc.senseNearbyRobots(senseRadius, allyTeam);
-        RobotInfo[] closeSensedAlly = rc.senseNearbyRobots(2, allyTeam);
 
         boolean seeMurk = false;
 
         if (turnCount <= 12) {
-            for (RobotInfo ally :closeSensedAlly) {
+            for (RobotInfo ally :rc.senseNearbyRobots(2, allyTeam)) {
                 if (ally.getType().canBid()){
                     homeID = ally.getID();
                     homeLoc = ally.getLocation();
@@ -250,6 +249,28 @@ public strictfp class RobotPlayer {
             }
         }
 
+        //Decode neighboring flags
+        for (RobotInfo ally : sensedAlly) {
+            int allyFlag = rc.getFlag(ally.getID());
+            if (allyFlag > 10) {
+                enemyBaseLoc = decodeFlag(allyFlag);
+                System.out.println("Decoded a flag with location: " + enemyBaseLoc);
+                break;
+            }
+        }
+
+        //Check if enemybaseloc has already been captured, if so, flag with extrainfo = 1.
+        for (RobotInfo ally : sensedAlly) {
+            if (ally.getType().canBid() && ally.getLocation().equals(enemyBaseLoc)) {
+                int flagNum = codeFlag(ally.getLocation(), 1); // Set a flag for enemy base location
+                if (trySetFlag(flagNum)) {
+                    System.out.println("Set Flag " + flagNum + "(Captured)");
+                    enemyBaseLoc = new MapLocation(0,0);
+                }
+                break;
+            }
+        }
+
         // Move toward enemyBase if not (0,0)
         if (enemyBaseLoc.x != 0 && enemyBaseLoc.y != 0) {
             Direction dirMove = currentloc.directionTo(enemyBaseLoc);
@@ -257,19 +278,6 @@ public strictfp class RobotPlayer {
                 rc.move(dirMove);
                 return;
             }
-        }
-
-        //Decode neighboring flags
-        for (RobotInfo ally : sensedAlly) {
-             int allyFlag = rc.getFlag(ally.getID());
-             if (allyFlag > 10) {
-                enemyBaseLoc = decodeFlag(allyFlag);
-                System.out.println("Decoded a flag with location: " + enemyBaseLoc);
-                if (trySetFlag(allyFlag)) {
-                    System.out.println("Set flag: "+allyFlag); //Set own Flag as the same
-                }
-                break;
-             }
         }
 
         // If we saw a murk, empower w 40% chance
@@ -289,7 +297,7 @@ public strictfp class RobotPlayer {
         }
 
         //Move towards groups of 2 enemies
-        if (sensed.length >= 2) {
+        if (sensed.length >= 3) {
             for (RobotInfo enemy : sensed) {
                 // move toward one of them
                 Direction dirMove = currentloc.directionTo(enemy.getLocation());
@@ -320,7 +328,14 @@ public strictfp class RobotPlayer {
         int senseRadius = rc.getType().sensorRadiusSquared;
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
 
-        if (turnCount > 800) {
+        if (turnCount <= 12) {
+            for (RobotInfo ally :rc.senseNearbyRobots(2, allyTeam)) {
+                if (ally.getType().canBid()){
+                    homeID = ally.getID();
+                    homeLoc = ally.getLocation();
+                }
+            }
+        } else if (turnCount > 800) {
             directionality = Direction.CENTER;
         }
 
@@ -332,6 +347,7 @@ public strictfp class RobotPlayer {
                 int flagNum = codeFlag(enemyLoc, 0); // Set a flag for enemy base location
                 if (trySetFlag(flagNum)) {
                     System.out.println("Set Flag: " + flagNum);
+                    directionality = directionality.opposite();
                 }
             }
 
@@ -372,7 +388,14 @@ public strictfp class RobotPlayer {
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
         RobotInfo[] detected = rc.senseNearbyRobots(detectRadius, enemyTeam);
 
-        if (turnCount > 800) {
+        if (turnCount <= 12) {
+            for (RobotInfo ally :rc.senseNearbyRobots(2, allyTeam)) {
+                if (ally.getType().canBid()){
+                    homeID = ally.getID();
+                    homeLoc = ally.getLocation();
+                }
+            }
+        } else if (turnCount > 800) {
             directionality = Direction.CENTER;
         }
 
@@ -396,6 +419,7 @@ public strictfp class RobotPlayer {
                 int flagNum = codeFlag(enemyLoc, 0); // Set a flag for enemy base location
                 if (trySetFlag(flagNum)) {
                     System.out.println("Set Flag: " + flagNum);
+                    directionality = directionality.opposite();
                 }
             }
             //Sense slanderer
@@ -408,8 +432,8 @@ public strictfp class RobotPlayer {
             }
         }
 
-        //Move towards groups of enemies
-        if (sensed.length >= 2) {
+        //Move towards groups of enemies with 40% chance
+        if (sensed.length >= 3 && Math.random() > .6) {
             for (RobotInfo enemy : sensed) {
                 // move toward one of them
                 Direction dirMove = currentloc.directionTo(enemy.getLocation());
@@ -458,7 +482,10 @@ public strictfp class RobotPlayer {
     }
 
     /**
-     * Attempts to decode a flag given a flag int
+     * Attempts to decode a flag given a flag int.
+     * extraninfo = 0 --> enemy base not captured
+     * extrainfo = 1 --> enemy base converted
+     * extrainfo = 2 --> neutral base
      *
      * @return MapLocation
      */
@@ -466,6 +493,17 @@ public strictfp class RobotPlayer {
         int y = flag % 128;
         int x = (flag/128) % 128;
         int extrainfo = flag / 128 / 128;
+
+        if (extrainfo == 1) {
+            if (trySetFlag(flag)) {
+                System.out.println("Set flag: "+flag + "(Captured)"); //Set own Flag as the same
+            }
+            return new MapLocation(0, 0);
+        }
+
+        if (trySetFlag(flag)) {
+            System.out.println("Set flag: "+flag); //Set own Flag as the same
+        }
 
         MapLocation currentLocation = rc.getLocation();
         int offsetX128 = currentLocation.x / 128;
@@ -557,7 +595,7 @@ public strictfp class RobotPlayer {
      */
     static Direction moveDirectionally(Direction dir){
         Direction finalDir;
-        if (Math.random() > .6) {
+        if (Math.random() > .75) {
             finalDir = opposites[(int) (Math.random() * opposites.length)];
         } else {
             finalDir = inDirection[(int) (Math.random() * inDirection.length)];
