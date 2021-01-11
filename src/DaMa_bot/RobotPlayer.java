@@ -34,6 +34,7 @@ public strictfp class RobotPlayer {
     static Direction[] inDirection;
     static int handedness;
     static double directionalityThreshold = .99;
+    static Set<Integer> flagsSeen = new HashSet<Integer>();
 
 
     /**
@@ -52,7 +53,7 @@ public strictfp class RobotPlayer {
         switch (rc.getType()) {
             case ENLIGHTENMENT_CENTER: directionalityThreshold = 1.0; break;
             case POLITICIAN:           directionalityThreshold = .5;          break;
-            case SLANDERER:            directionalityThreshold = .5;           break;
+            case SLANDERER:            directionalityThreshold = .75;           break;
             case MUCKRAKER:            directionalityThreshold = .25;           break;
         }
 
@@ -263,7 +264,8 @@ public strictfp class RobotPlayer {
         //Decode neighboring ally flags
         for (RobotInfo ally : sensedAlly) {
             int allyFlag = rc.getFlag(ally.getID());
-            if (allyFlag > 10) {
+            if (allyFlag > 10 && !flagsSeen.contains(allyFlag)) {
+                flagsSeen.add(allyFlag);
                 enemyBaseLoc = decodeFlag(allyFlag);
                 System.out.println("Decoded a flag with location: " + enemyBaseLoc);
                 break;
@@ -275,6 +277,7 @@ public strictfp class RobotPlayer {
             if (ally.type == RobotType.ENLIGHTENMENT_CENTER && ally.getLocation().equals(enemyBaseLoc)) {
                 int flagNum = codeFlag(ally.getLocation(), 1); // Set a flag for enemy base location
                 if (trySetFlag(flagNum)) {
+                    flagsSeen.add(flagNum);
                     System.out.println("Set Flag " + flagNum + "(Captured)");
                     enemyBaseLoc = new MapLocation(0,0);
                 }
@@ -410,7 +413,8 @@ public strictfp class RobotPlayer {
 
         for (RobotInfo ally : sensedAlly) {
             int allyFlag = rc.getFlag(ally.getID());
-            if (allyFlag > 10) {
+            if (allyFlag > 10 && !flagsSeen.contains(allyFlag)) {
+                flagsSeen.add(allyFlag);
                 enemyBaseLoc = decodeFlag(allyFlag);
                 System.out.println("Decoded a flag with location: " + enemyBaseLoc);
                 break;
@@ -595,6 +599,7 @@ public strictfp class RobotPlayer {
             }
         } else if (rc.isReady()) {
             if (rc.canMove(d) && (rc.sensePassability(rc.getLocation().add(d)) >= passabilityThreshold || Math.random() > .92)) {
+                System.out.println("Moved toward target: " + target);
                 rc.move(d);
                 bugDirection = null;
             } else {
@@ -604,6 +609,7 @@ public strictfp class RobotPlayer {
                 for (int i = 0; i < 8; ++i) {
                     if (rc.canMove(bugDirection) && rc.sensePassability(rc.getLocation().add(bugDirection)) >= passabilityThreshold) {
 //                        rc.setIndicatorDot(rc.getLocation().add(bugDirection), 0, 255, 255);
+                        System.out.println("Moved toward target: " + target);
                         rc.move(bugDirection);
                         if (handedness == 0) {
                             bugDirection = bugDirection.rotateLeft();
