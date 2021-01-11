@@ -229,6 +229,7 @@ public strictfp class RobotPlayer {
                 MapLocation enemyLoc = enemy.getLocation();
                 int flagNum = codeFlag(enemyLoc, 0); // Set a flag for enemy base location
                 if (trySetFlag(flagNum)){
+                    flagsSeen.add(flagNum);
                     System.out.println("Set Flag " + flagNum);
                 }
 
@@ -440,6 +441,7 @@ public strictfp class RobotPlayer {
                 MapLocation enemyLoc = enemy.getLocation();
                 int flagNum = codeFlag(enemyLoc, 0); // Set a flag for enemy base location
                 if (trySetFlag(flagNum)) {
+                    flagsSeen.add(flagNum);
                     System.out.println("Set Flag: " + flagNum);
                     directionality = directionality.opposite();
                 }
