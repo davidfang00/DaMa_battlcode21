@@ -1,7 +1,9 @@
-package DaMa_bot;
+package DaMa_bot1;
 import battlecode.common.*;
 
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 
 public strictfp class RobotPlayer {
     static RobotController rc;
@@ -109,22 +111,19 @@ public strictfp class RobotPlayer {
 
         //bids
         if (currInfluence > 90) {
-            if (rc.canBid(currInfluence/4)) {
-                int toBid = currInfluence/4;
-                currInfluence -= toBid;
-                rc.bid(toBid);
-                System.out.println("Bid: " + toBid);
+            if (rc.canBid(currInfluence/3)) {
+                currInfluence -= currInfluence/3;
+                rc.bid(currInfluence/3);
             }
         } else {
-            if (rc.canBid(2) && Math.random() > .5) {
+            if (rc.canBid(2) && Math.random() > .6) {
                 currInfluence -= 2;
                 rc.bid(2);
-                System.out.println("Bid: 2");
             }
         }
 
         // Want to conserve some influence or too many friendly units around
-        if (currInfluence <= 50 || sensedAllies.length > 25) {
+        if (currInfluence <= 50 || sensedAllies.length > 35) {
             return;
         }
 
@@ -136,7 +135,7 @@ public strictfp class RobotPlayer {
                     return;
                 }
             }
-        } else if (sensed.length > 25) { //Too many enemies surrounding, just turtle up
+        } else if (sensed.length > 15) { //Too many enemies surrounding, just turtle up
             return;
         }
 
@@ -621,7 +620,7 @@ public strictfp class RobotPlayer {
                         }
                         break;
                     }
-//                    rc.setIndicatorDot(rc.getLocation().add(bugDirection), 255, 0, 0);
+                    rc.setIndicatorDot(rc.getLocation().add(bugDirection), 255, 0, 0);
                     if (handedness == 0) {
                         bugDirection = bugDirection.rotateRight();
                     } else {
@@ -635,7 +634,7 @@ public strictfp class RobotPlayer {
     /**
      * Returns available direction with highest passability.
      * Can choose random direction with 10%.
-     * Only 60% chance to actually return that direction
+     * Only 50% chance to actually return that direction
      *
      * @return best direction
      */
