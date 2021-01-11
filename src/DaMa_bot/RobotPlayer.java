@@ -63,7 +63,7 @@ public strictfp class RobotPlayer {
             opposites = new Direction[] {directionality.opposite(),
                     directionality.opposite().rotateLeft(), directionality.opposite().rotateRight(),
                     directionality.rotateRight().rotateRight(), directionality.rotateLeft().rotateLeft()};
-            inDirection = new Direction[] {directionality, directionality,
+            inDirection = new Direction[] {directionality, directionality, directionality,
                     directionality.rotateLeft(), directionality.rotateRight()};
         } else {
             directionality = Direction.CENTER;
@@ -116,16 +116,19 @@ public strictfp class RobotPlayer {
             if (rc.canBid(currInfluence/3)) {
                 currInfluence -= currInfluence/3;
                 rc.bid(currInfluence/3);
+                System.out.println("I bid: "+ currInfluence/3);
             }
         } else {
             if (rc.canBid(2) && Math.random() > .6) {
                 currInfluence -= 2;
                 rc.bid(2);
+                System.out.println("I bid: 2");
             }
         }
 
         // Want to conserve some influence or too many friendly units around
         if (currInfluence <= 50 || sensedAllies.length > 35) {
+            System.out.println("Conserving or too many allies around");
             return;
         }
 
@@ -133,11 +136,13 @@ public strictfp class RobotPlayer {
         if (sensed.length >= 3 && sensed.length < 10) {
             for (Direction dir : directions) {
                 if (rc.canBuildRobot(RobotType.POLITICIAN, dir, currInfluence/2)) {
+                    System.out.println("Enemies around, building polis");
                     rc.buildRobot(RobotType.POLITICIAN, dir, currInfluence/2);
                     return;
                 }
             }
         } else if (sensed.length > 20) { //Too many enemies surrounding, just turtle up
+            System.out.println("Turtling...");
             return;
         }
 
@@ -373,6 +378,7 @@ public strictfp class RobotPlayer {
                 MapLocation currentloc = rc.getLocation();
                 Direction dirMove = currentloc.directionTo(enemy.getLocation()).opposite();
                 if (rc.canMove(dirMove)) {
+                    System.out.println("Running away toward "+dirMove);
                     rc.move(dirMove);
                     return;
                 }
