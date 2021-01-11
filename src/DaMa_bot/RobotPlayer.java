@@ -116,7 +116,7 @@ public strictfp class RobotPlayer {
                 rc.bid(currInfluence/3);
             }
         } else {
-            if (rc.canBid(2) && Math.random() > .6) {
+            if (rc.canBid(2) && Math.random() > .5) {
                 currInfluence -= 2;
                 rc.bid(2);
             }
@@ -620,7 +620,7 @@ public strictfp class RobotPlayer {
                         }
                         break;
                     }
-                    rc.setIndicatorDot(rc.getLocation().add(bugDirection), 255, 0, 0);
+//                    rc.setIndicatorDot(rc.getLocation().add(bugDirection), 255, 0, 0);
                     if (handedness == 0) {
                         bugDirection = bugDirection.rotateRight();
                     } else {
@@ -634,7 +634,7 @@ public strictfp class RobotPlayer {
     /**
      * Returns available direction with highest passability.
      * Can choose random direction with 10%.
-     * Only 50% chance to actually return that direction
+     * Only 60% chance to actually return that direction
      *
      * @return best direction
      */
