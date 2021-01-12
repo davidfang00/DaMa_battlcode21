@@ -107,6 +107,7 @@ public strictfp class RobotPlayer {
                 if (flagNum > 10 && !flagsSeen.contains(flagNum)){
                     enemyBaseLoc = decodeFlag(flagNum);
                     if (trySetFlag(flagNum)){
+                        flagsSeen.add(flagNum);
                         System.out.println("Received from muck. Set flag: "+flagNum + enemyBaseLoc);
                     }
                 }
@@ -119,6 +120,7 @@ public strictfp class RobotPlayer {
             if (currInfluence <= 75){
                 return;
             } else {
+                System.out.println("Built targeted politician.");
                 buildRobot(RobotType.POLITICIAN, currInfluence - 10);
             }
         }
@@ -293,16 +295,16 @@ public strictfp class RobotPlayer {
             }
         }
 
-//        //Decode neighboring ally flags
-//        for (RobotInfo ally : sensedAlly) {
-//            int allyFlag = rc.getFlag(ally.getID());
-//            if (allyFlag > 10 && !flagsSeen.contains(allyFlag)) {
-//                flagsSeen.add(allyFlag);
-//                enemyBaseLoc = decodeFlag(allyFlag);
-//                System.out.println("Decoded a flag with location: " + enemyBaseLoc);
-//                break;
-//            }
-//        }
+        //Decode neighboring ally flags
+        for (RobotInfo ally : sensedAlly) {
+            int allyFlag = rc.getFlag(ally.getID());
+            if (allyFlag > 10 && !flagsSeen.contains(allyFlag)) {
+                flagsSeen.add(allyFlag);
+                enemyBaseLoc = decodeFlag(allyFlag);
+                System.out.println("Decoded a flag with location: " + enemyBaseLoc);
+                break;
+            }
+        }
 
         //Check if enemybaseloc has already been captured, if so, set flag with extrainfo = 1.
         for (RobotInfo ally : sensedAlly) {
@@ -338,18 +340,6 @@ public strictfp class RobotPlayer {
             return;
         }
 
-//        //Move towards groups of 2 enemies
-//        if (sensed.length >= 3) {
-//            for (RobotInfo enemy : sensed) {
-//                // move toward one of them
-//                Direction dirMove = currentloc.directionTo(enemy.getLocation());
-//                if (rc.canMove(dirMove)) {
-//                    rc.move(dirMove);
-//                    return;
-//                }
-//            }
-//        }
-
         //Move w certain chance in best direction w largest passability or based on directionality
         if (directionality.equals(Direction.CENTER)) {
             if (tryMove(findBestDirection())) {
@@ -364,6 +354,7 @@ public strictfp class RobotPlayer {
     static void runSlanderer() throws GameActionException {
         Team enemyTeam = rc.getTeam().opponent();
         Team allyTeam = rc.getTeam();
+        MapLocation currentloc = rc.getLocation();
         int senseRadius = rc.getType().sensorRadiusSquared;
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
 
@@ -392,7 +383,6 @@ public strictfp class RobotPlayer {
 
             // move away from a muck or pol
             if (enemy.type == RobotType.POLITICIAN || enemy.type == RobotType.MUCKRAKER){
-                MapLocation currentloc = rc.getLocation();
                 Direction dirMove = currentloc.directionTo(enemy.getLocation()).opposite();
                 if (rc.canMove(dirMove)) {
                     System.out.println("Running away toward "+dirMove);
@@ -400,6 +390,10 @@ public strictfp class RobotPlayer {
                     return;
                 }
             }
+        }
+
+        if (currentloc.distanceSquaredTo(homeLoc) > 10) {
+            return;
         }
 
         //Move w certain chance in best direction w largest passability or based on directionality
@@ -434,7 +428,7 @@ public strictfp class RobotPlayer {
                     homeLoc = ally.getLocation();
                 }
             }
-        } else if (turnCount > 400) {
+        } else if (turnCount > 300) {
             directionality = Direction.CENTER;
         }
 
@@ -473,7 +467,7 @@ public strictfp class RobotPlayer {
                 }
             }
             //Sense slanderer
-            if (enemy.getType().canBeExposed()) {
+            if (enemy.getType().canBeExposed() && turnCount > 300) {
                 Direction dirMove = currentloc.directionTo(enemy.getLocation());
                 if (rc.canMove(dirMove)) { // move toward a slanderer
                     rc.move(dirMove);
