@@ -23,6 +23,13 @@ public strictfp class RobotPlayer {
             Direction.NORTHWEST,
     };
 
+    static final Direction[] cardinals = {
+            Direction.NORTH,
+            Direction.EAST,
+            Direction.SOUTH,
+            Direction.WEST,
+    };
+
     static int turnCount;
     static MapLocation enemyBaseLoc = new MapLocation(0, 0);
     static int homeID;
@@ -48,7 +55,11 @@ public strictfp class RobotPlayer {
         turnCount = 0;
 
         if (rc.getType() == RobotType.MUCKRAKER) {
-            directionality = directions[(int) (Math.random() * directions.length)];
+            if (Math.random() > .6) {
+                directionality = directions[(int) (Math.random() * directions.length)];
+            } else {
+                directionality = cardinals[(int) (Math.random() * cardinals.length)];
+            }
         }
 
         //Determine handedness
@@ -66,7 +77,7 @@ public strictfp class RobotPlayer {
                 // Here, we've separated the controls into a different method for each RobotType.
                 // You may rewrite this into your own control structure if you wish.
                 System.out.println("I'm a " + rc.getType() + "! Location " + rc.getLocation());
-                System.out.println("There are enemy bases at " + enemyBasesToCapture);
+                System.out.println("There are enemy bases at " + enemyBaseLoc + enemyBasesToCapture);
                 switch (rc.getType()) {
                     case ENLIGHTENMENT_CENTER: runEnlightenmentCenter(); break;
                     case POLITICIAN:           runPolitician();          break;
@@ -91,9 +102,12 @@ public strictfp class RobotPlayer {
         Team allyTeam = rc.getTeam();
         int currInfluence = rc.getInfluence(); //gets current influence
         int senseRadius = rc.getType().sensorRadiusSquared;
+
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
         RobotInfo[] sensedAllies = rc.senseNearbyRobots(senseRadius, allyTeam);
         RobotInfo[] sensedAlliesCloseby = rc.senseNearbyRobots(2, allyTeam);
+
+        int numNearbySlans = 0;
 
         for (RobotInfo ally : sensedAlliesCloseby) {
             if (ally.type == RobotType.MUCKRAKER && !seenMucks.contains(ally.ID)){
@@ -124,6 +138,8 @@ public strictfp class RobotPlayer {
 //            flagNum = codeFlag(enemyBaseLoc, 1);
 //            if (enemyBasesToCapture.size() > 0) {
 //                enemyBaseLoc = enemyBasesToCapture.iterator().next();
+//            } else {
+//                enemyBaseLoc = new MapLocation(0,0);
 //            }
 //        } else if (enemyBaseLoc.x == 0) {
 //            flagNum = 0;
@@ -135,7 +151,7 @@ public strictfp class RobotPlayer {
 //            flagsSeen.add(flagNum);
 //            System.out.println("Set flag: " + flagNum + enemyBaseLoc);
 //        }
-
+//
 //        if (Math.random() > .5) {
 //            if (rc.canBid(1)) {
 //                rc.bid(1);
@@ -159,6 +175,7 @@ public strictfp class RobotPlayer {
             }
         }
 
+        //There is a target base to go for
         if (enemyBaseLoc.x != 0) {
             if (currInfluence <= 75){
                 return;
@@ -167,9 +184,9 @@ public strictfp class RobotPlayer {
                     rc.bid(1);
                     System.out.println("I bid: 1");
                 }
-                if (Math.random() > .05) {
+                if (Math.random() > .1) {
                     System.out.println("Built targeted politician.");
-                    buildRobot(RobotType.POLITICIAN, currInfluence - 10);
+                    buildRobot(RobotType.POLITICIAN, currInfluence - 15);
                 }
                 else {
                     buildRobot(RobotType.MUCKRAKER, 5);
@@ -220,12 +237,12 @@ public strictfp class RobotPlayer {
         double polPercent;
         double slanPercent;
 
-        if (turnCount < 200) {
+        if (turnCount < 300) {
             polPercent = .80;
             slanPercent = .50;
         } else if (turnCount < 1000){
             polPercent = .75;
-            slanPercent = .4;
+            slanPercent = .40;
         } else if (turnCount < 1500) {
             polPercent = .40;
             slanPercent = .25;
@@ -237,7 +254,7 @@ public strictfp class RobotPlayer {
         if (buildInfluence < 25) {
             buildBool = Math.random() > .4;
             if (turnCount < 200){
-                buildInfluence = 20;
+                buildInfluence = 25;
             } else {
                 buildInfluence = 5;
             }
@@ -603,13 +620,9 @@ public strictfp class RobotPlayer {
         int x = (flag/128) % 128;
         int extrainfo = flag / 128 / 128;
 
-        if (flag == 0 || flag == 128 * 128) {
+        if (flag == 0 || extrainfo == 1) {
             return new MapLocation(0, 0);
         }
-//
-//        if (trySetFlag(flag)) {
-//            System.out.println("Decoded and Set flag: "+flag); //Set own Flag as the same
-//        }
 
         MapLocation currentLocation = rc.getLocation();
         int offsetX128 = currentLocation.x / 128;
