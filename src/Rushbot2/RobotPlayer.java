@@ -1,4 +1,4 @@
-package Rushbot;
+package Rushbot2;
 import battlecode.common.*;
 
 import java.util.*;
@@ -31,6 +31,8 @@ public strictfp class RobotPlayer {
     static int handedness;
     static Set<Integer> flagsSeen = new HashSet<Integer>();
     static Set<Integer> seenMucks = new HashSet<Integer>();
+    static Set<MapLocation> enemyBasesToCapture = new HashSet<MapLocation>();
+    static Set<MapLocation> enemyBasesCaptured = new HashSet<MapLocation>();
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -64,6 +66,7 @@ public strictfp class RobotPlayer {
                 // Here, we've separated the controls into a different method for each RobotType.
                 // You may rewrite this into your own control structure if you wish.
                 System.out.println("I'm a " + rc.getType() + "! Location " + rc.getLocation());
+                System.out.println("There are enemy bases at " + enemyBasesToCapture);
                 switch (rc.getType()) {
                     case ENLIGHTENMENT_CENTER: runEnlightenmentCenter(); break;
                     case POLITICIAN:           runPolitician();          break;
@@ -98,6 +101,48 @@ public strictfp class RobotPlayer {
             }
         }
 
+//        // Get flag info from mucks (updated version)
+//        for (int muckID : seenMucks) {
+//            if (rc.canGetFlag(muckID)) {
+//                int flagNum = rc.getFlag(muckID);
+//                int extraInfo = flagNum / 128 / 128;
+//                MapLocation tempEnemyBaseLoc = decodeFlag(flagNum);
+//                if (flagNum > 10 && extraInfo == 0 && !enemyBasesToCapture.contains(tempEnemyBaseLoc) && tempEnemyBaseLoc.x != 0) {
+//                    enemyBasesToCapture.add(tempEnemyBaseLoc);
+//                } else if (flagNum > 10 && extraInfo == 1) {
+//                    enemyBasesCaptured.add(tempEnemyBaseLoc);
+//                }
+//            }
+//            else {
+//                seenMucks.remove(muckID);
+//            }
+//        }
+//        int flagNum;
+//        enemyBasesToCapture.removeAll(enemyBasesCaptured);
+//
+//        if (!enemyBasesToCapture.contains(enemyBaseLoc)) {
+//            flagNum = codeFlag(enemyBaseLoc, 1);
+//            if (enemyBasesToCapture.size() > 0) {
+//                enemyBaseLoc = enemyBasesToCapture.iterator().next();
+//            }
+//        } else if (enemyBaseLoc.x == 0) {
+//            flagNum = 0;
+//        } else {
+//            flagNum = codeFlag(enemyBaseLoc, 0);
+//        }
+//
+//        if (trySetFlag(flagNum)) {
+//            flagsSeen.add(flagNum);
+//            System.out.println("Set flag: " + flagNum + enemyBaseLoc);
+//        }
+
+//        if (Math.random() > .5) {
+//            if (rc.canBid(1)) {
+//                rc.bid(1);
+//                System.out.println("I bid: 1");
+//            }
+//        }
+
         // Get flag info from mucks
         for (int muckID : seenMucks) {
             if (rc.canGetFlag(muckID)){
@@ -118,8 +163,18 @@ public strictfp class RobotPlayer {
             if (currInfluence <= 75){
                 return;
             } else {
-                System.out.println("Built targeted politician.");
-                buildRobot(RobotType.POLITICIAN, currInfluence - 10);
+                if (rc.canBid(1)) {
+                    rc.bid(1);
+                    System.out.println("I bid: 1");
+                }
+                if (Math.random() > .05) {
+                    System.out.println("Built targeted politician.");
+                    buildRobot(RobotType.POLITICIAN, currInfluence - 10);
+                }
+                else {
+                    buildRobot(RobotType.MUCKRAKER, 5);
+                }
+
             }
         }
 
