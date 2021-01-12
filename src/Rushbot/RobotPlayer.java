@@ -1,4 +1,4 @@
-package DaMa_bot;
+package Rushbot;
 import battlecode.common.*;
 
 import java.util.*;
@@ -27,13 +27,12 @@ public strictfp class RobotPlayer {
     static MapLocation enemyBaseLoc = new MapLocation(0, 0);
     static int homeID;
     static MapLocation homeLoc;
-    static Direction directionality;
-    static Direction[] opposites;
-    static Direction[] inDirection;
+    static Direction directionality = Direction.CENTER;
     static int handedness;
     static double directionalityThreshold = .99;
     static Set<Integer> flagsSeen = new HashSet<Integer>();
     static boolean goHome = false;
+    static Set<Integer> seenMucks = new HashSet<Integer>();
 
 
     /**
@@ -49,23 +48,8 @@ public strictfp class RobotPlayer {
 
         turnCount = 0;
 
-        switch (rc.getType()) {
-            case ENLIGHTENMENT_CENTER: directionalityThreshold = 1.0; break;
-            case POLITICIAN:           directionalityThreshold = .5;          break;
-            case SLANDERER:            directionalityThreshold = .75;           break;
-            case MUCKRAKER:            directionalityThreshold = .15;           break;
-        }
-
-        //Determine directionality
-        if (Math.random() > directionalityThreshold) {
+        if (rc.getType() == RobotType.MUCKRAKER) {
             directionality = directions[(int) (Math.random() * directions.length)];
-            opposites = new Direction[] {directionality.opposite(),
-                    directionality.opposite().rotateLeft(), directionality.opposite().rotateRight(),
-                    directionality.rotateRight().rotateRight(), directionality.rotateLeft().rotateLeft()};
-            inDirection = new Direction[] {directionality, directionality, directionality,
-                    directionality.rotateLeft(), directionality.rotateRight()};
-        } else {
-            directionality = Direction.CENTER;
         }
 
         //Determine handedness
@@ -109,6 +93,35 @@ public strictfp class RobotPlayer {
         int senseRadius = rc.getType().sensorRadiusSquared;
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
         RobotInfo[] sensedAllies = rc.senseNearbyRobots(senseRadius, allyTeam);
+        RobotInfo[] sensedAlliesCloseby = rc.senseNearbyRobots(2, allyTeam);
+
+        for (RobotInfo ally : sensedAlliesCloseby) {
+            if (ally.type == RobotType.MUCKRAKER && !seenMucks.contains(ally.ID)){
+                seenMucks.add(ally.ID);
+            }
+        }
+
+        for (int muckID : seenMucks) {
+            if (rc.canGetFlag(muckID)){
+                int flagNum = rc.getFlag(muckID);
+                if (flagNum > 10 && !flagsSeen.contains(flagNum)){
+                    enemyBaseLoc = decodeFlag(flagNum);
+                    if (trySetFlag(flagNum)){
+                        System.out.println("Received from muck. Set flag: "+flagNum + enemyBaseLoc);
+                    }
+                }
+            } else {
+                seenMucks.remove(muckID);
+            }
+        }
+
+        if (enemyBaseLoc.x != 0) {
+            if (currInfluence <= 75){
+                return;
+            } else {
+                buildRobot(RobotType.POLITICIAN, currInfluence - 10);
+            }
+        }
 
         //bids
         if (currInfluence > 90) {
@@ -152,9 +165,9 @@ public strictfp class RobotPlayer {
         double polPercent;
         double slanPercent;
 
-        if (turnCount < 300) {
-            polPercent = .7;
-            slanPercent = .35;
+        if (turnCount < 100) {
+            polPercent = .9;
+            slanPercent = .5;
         } else if (turnCount < 1000){
             polPercent = .40;
             slanPercent = .2;
@@ -270,16 +283,26 @@ public strictfp class RobotPlayer {
             }
         }
 
-        //Decode neighboring ally flags
-        for (RobotInfo ally : sensedAlly) {
-            int allyFlag = rc.getFlag(ally.getID());
-            if (allyFlag > 10 && !flagsSeen.contains(allyFlag)) {
-                flagsSeen.add(allyFlag);
-                enemyBaseLoc = decodeFlag(allyFlag);
-                System.out.println("Decoded a flag with location: " + enemyBaseLoc);
-                break;
+        //Check EC flag
+        if (rc.canGetFlag(homeID)) {
+            int ecFlag = rc.getFlag(homeID);
+            if (ecFlag > 10 && enemyBaseLoc.x == 0 && !flagsSeen.contains(ecFlag)) {
+                flagsSeen.add(ecFlag);
+                enemyBaseLoc = decodeFlag(ecFlag);
+                System.out.println("Got flag from EC. Target location: " + enemyBaseLoc);
             }
         }
+
+//        //Decode neighboring ally flags
+//        for (RobotInfo ally : sensedAlly) {
+//            int allyFlag = rc.getFlag(ally.getID());
+//            if (allyFlag > 10 && !flagsSeen.contains(allyFlag)) {
+//                flagsSeen.add(allyFlag);
+//                enemyBaseLoc = decodeFlag(allyFlag);
+//                System.out.println("Decoded a flag with location: " + enemyBaseLoc);
+//                break;
+//            }
+//        }
 
         //Check if enemybaseloc has already been captured, if so, set flag with extrainfo = 1.
         for (RobotInfo ally : sensedAlly) {
@@ -315,27 +338,22 @@ public strictfp class RobotPlayer {
             return;
         }
 
-        //Move towards groups of 2 enemies
-        if (sensed.length >= 3) {
-            for (RobotInfo enemy : sensed) {
-                // move toward one of them
-                Direction dirMove = currentloc.directionTo(enemy.getLocation());
-                if (rc.canMove(dirMove)) {
-                    rc.move(dirMove);
-                    return;
-                }
-            }
-        }
+//        //Move towards groups of 2 enemies
+//        if (sensed.length >= 3) {
+//            for (RobotInfo enemy : sensed) {
+//                // move toward one of them
+//                Direction dirMove = currentloc.directionTo(enemy.getLocation());
+//                if (rc.canMove(dirMove)) {
+//                    rc.move(dirMove);
+//                    return;
+//                }
+//            }
+//        }
 
         //Move w certain chance in best direction w largest passability or based on directionality
         if (directionality.equals(Direction.CENTER)) {
             if (tryMove(findBestDirection())) {
                 System.out.println("I moved randomly!");
-                return;
-            }
-        } else {
-            if (tryMove(moveDirectionally(directionality))){
-                System.out.println("I moved directionally toward "+ directionality + " !");
                 return;
             }
         }
@@ -390,11 +408,6 @@ public strictfp class RobotPlayer {
                 System.out.println("I moved randomly!");
                 return;
             }
-        } else {
-            if (tryMove(moveDirectionally(directionality))){
-                System.out.println("I moved directionally toward "+ directionality + " !");
-                return;
-            }
         }
     }
 
@@ -421,7 +434,7 @@ public strictfp class RobotPlayer {
                     homeLoc = ally.getLocation();
                 }
             }
-        } else if (turnCount > 800) {
+        } else if (turnCount > 400) {
             directionality = Direction.CENTER;
         }
 
@@ -456,11 +469,7 @@ public strictfp class RobotPlayer {
                 if (!flagsSeen.contains(flagNum) && trySetFlag(flagNum)) {
                     flagsSeen.add(flagNum);
                     System.out.println("Set Flag: " + flagNum);
-                    if (Math.random() > .75) {
-                        goHome = true;
-                    } else {
-                        directionality = currentloc.directionTo(enemyLoc);
-                    }
+                    directionality = Direction.CENTER;
                 }
             }
             //Sense slanderer
@@ -473,22 +482,6 @@ public strictfp class RobotPlayer {
             }
         }
 
-//        //Move towards groups of enemies with 40% chance
-//        if (sensed.length >= 10 && Math.random() > .6) {
-//            for (RobotInfo enemy : sensed) {
-//                // move toward one of them
-//                Direction dirMove = currentloc.directionTo(enemy.getLocation());
-//                if (rc.canMove(dirMove)) {
-//                    rc.move(dirMove);
-//                    return;
-//                }
-//            }
-//        }
-
-        if (goHome == true) {
-            findPath(homeLoc, handedness);
-        }
-
         //Move w certain chance in best direction w largest passability or based on directionality
         if (directionality.equals(Direction.CENTER)) {
             if (tryMove(findBestDirection())) {
@@ -496,7 +489,7 @@ public strictfp class RobotPlayer {
                 return;
             }
         } else {
-            if (tryMove(moveDirectionally(directionality))){
+            if (tryMove(directionality)){
                 System.out.println("I moved directionally toward "+ directionality + " !");
                 return;
             }
@@ -678,23 +671,6 @@ public strictfp class RobotPlayer {
         }
         return bestDir;
     }
-
-    /**
-     * Attempts to move in a general given direction.
-     *
-     * @param dir The general direction of movement
-     * @return direction
-     */
-    static Direction moveDirectionally(Direction dir){
-        Direction finalDir;
-        if (Math.random() > .95) {
-            finalDir = opposites[(int) (Math.random() * opposites.length)];
-        } else {
-            finalDir = inDirection[(int) (Math.random() * inDirection.length)];
-        }
-        return finalDir;
-    }
-
 
     /**
      * Attempts to move in a given direction.
