@@ -107,6 +107,13 @@ public strictfp class RobotPlayer {
         RobotInfo[] sensedAllies = rc.senseNearbyRobots(senseRadius, allyTeam);
         RobotInfo[] sensedAlliesCloseby = rc.senseNearbyRobots(2, allyTeam);
 
+        //If we hit 1501 votes, not longer need to bid
+        boolean shouldBid = true;
+        int currentVotes = rc.getTeamVotes();
+        if (currentVotes >= 1501) {
+            shouldBid = false;
+        }
+
         int numNearbySlans = 0;
 
         for (RobotInfo ally : sensedAlliesCloseby) {
@@ -180,7 +187,7 @@ public strictfp class RobotPlayer {
             if (currInfluence <= 75){
                 return;
             } else {
-                if (rc.canBid(1)) {
+                if (rc.canBid(1) && shouldBid) {
                     rc.bid(1);
                     System.out.println("I bid: 1");
                 }
@@ -196,13 +203,13 @@ public strictfp class RobotPlayer {
         }
 
         //bids
-        if (currInfluence > 90 && turnCount > 200) {
+        if (currInfluence > 90 && turnCount > 200 && shouldBid) {
             if (rc.canBid(currInfluence/3)) {
                 currInfluence -= currInfluence/3;
                 rc.bid(currInfluence/3);
                 System.out.println("I bid: "+ currInfluence/3);
             }
-        } else {
+        } else if (shouldBid) {
             if (rc.canBid(2) && Math.random() > .6) {
                 currInfluence -= 2;
                 rc.bid(2);
