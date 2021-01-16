@@ -1,4 +1,4 @@
-package DaMa_bot;
+package DaMa_bot2;
 import battlecode.common.*;
 
 import java.util.*;
@@ -110,14 +110,21 @@ public strictfp class RobotPlayer {
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
         RobotInfo[] sensedAllies = rc.senseNearbyRobots(senseRadius, allyTeam);
 
+        //If we hit 751 votes, no longer need to bid
+        boolean shouldBid = true;
+        int currentVotes = rc.getTeamVotes();
+        if (currentVotes >= 751) {
+            shouldBid = false;
+        }
+
         //bids
-        if (currInfluence > 90) {
+        if (currInfluence > 90 && shouldBid) {
             if (rc.canBid(currInfluence/3)) {
                 currInfluence -= currInfluence/3;
                 rc.bid(currInfluence/3);
                 System.out.println("I bid: "+ currInfluence/3);
             }
-        } else {
+        } else if (shouldBid) {
             if (rc.canBid(2) && Math.random() > .6) {
                 currInfluence -= 2;
                 rc.bid(2);

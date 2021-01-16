@@ -65,9 +65,9 @@ public strictfp class RobotPlayer {
 
         //Determine handedness
         if (Math.random() > .5){
-            handedness = 0;
+            handedness = 0; //left
         } else {
-            handedness = 1;
+            handedness = 1; //right
         }
 
         System.out.println("I'm a " + rc.getType() + " and I just got created!");
@@ -108,10 +108,10 @@ public strictfp class RobotPlayer {
         RobotInfo[] sensedAllies = rc.senseNearbyRobots(senseRadius, allyTeam);
         RobotInfo[] sensedAlliesCloseby = rc.senseNearbyRobots(2, allyTeam);
 
-        //If we hit 1501 votes, not longer need to bid
+        //If we hit 751 votes, no longer need to bid
         boolean shouldBid = true;
         int currentVotes = rc.getTeamVotes();
-        if (currentVotes >= 1501) {
+        if (currentVotes >= 751) {
             shouldBid = false;
         }
 
@@ -122,50 +122,6 @@ public strictfp class RobotPlayer {
                 seenMucks.add(ally.ID);
             }
         }
-
-//        // Get flag info from mucks (updated version)
-//        for (int muckID : seenMucks) {
-//            if (rc.canGetFlag(muckID)) {
-//                int flagNum = rc.getFlag(muckID);
-//                int extraInfo = flagNum / 128 / 128;
-//                MapLocation tempEnemyBaseLoc = decodeFlag(flagNum);
-//                if (flagNum > 10 && extraInfo == 0 && !enemyBasesToCapture.contains(tempEnemyBaseLoc) && tempEnemyBaseLoc.x != 0) {
-//                    enemyBasesToCapture.add(tempEnemyBaseLoc);
-//                } else if (flagNum > 10 && extraInfo == 1) {
-//                    enemyBasesCaptured.add(tempEnemyBaseLoc);
-//                }
-//            }
-//            else {
-//                seenMucks.remove(muckID);
-//            }
-//        }
-//        int flagNum;
-//        enemyBasesToCapture.removeAll(enemyBasesCaptured);
-//
-//        if (!enemyBasesToCapture.contains(enemyBaseLoc)) {
-//            flagNum = codeFlag(enemyBaseLoc, 1);
-//            if (enemyBasesToCapture.size() > 0) {
-//                enemyBaseLoc = enemyBasesToCapture.iterator().next();
-//            } else {
-//                enemyBaseLoc = new MapLocation(0,0);
-//            }
-//        } else if (enemyBaseLoc.x == 0) {
-//            flagNum = 0;
-//        } else {
-//            flagNum = codeFlag(enemyBaseLoc, 0);
-//        }
-//
-//        if (trySetFlag(flagNum)) {
-//            flagsSeen.add(flagNum);
-//            System.out.println("Set flag: " + flagNum + enemyBaseLoc);
-//        }
-//
-//        if (Math.random() > .5) {
-//            if (rc.canBid(1)) {
-//                rc.bid(1);
-//                System.out.println("I bid: 1");
-//            }
-//        }
 
         // Get flag info from mucks
         for (int muckID : seenMucks) {
@@ -199,12 +155,11 @@ public strictfp class RobotPlayer {
                 else {
                     buildRobot(RobotType.MUCKRAKER, muckStrength);
                 }
-
             }
         }
 
         //bids
-        if (currInfluence > 90 && turnCount > 200 && shouldBid) {
+        if (currInfluence > 90 && turnCount > 150 && shouldBid) {
             if (rc.canBid(currInfluence/3)) {
                 currInfluence -= currInfluence/3;
                 rc.bid(currInfluence/3);
@@ -580,6 +535,13 @@ public strictfp class RobotPlayer {
             if (tryMove(directionality)){
                 System.out.println("I moved directionally toward "+ directionality + " !");
                 return;
+            } else if (!rc.canSenseLocation(currentloc.add(directionality))) { // Hit map edge
+                if (handedness == 0) {
+                    directionality = directionality.rotateRight().rotateRight();
+                } else {
+                    directionality = directionality.rotateLeft().rotateLeft();
+                }
+                System.out.println("I hit the map edge! Going in direction " +directionality + " now!");
             } else {
                 if (tryMove(findBestDirection())) {
                     System.out.println("Could not move directionally, so I moved randomly!");
@@ -718,7 +680,7 @@ public strictfp class RobotPlayer {
                         }
                         break;
                     }
-                    rc.setIndicatorDot(rc.getLocation().add(bugDirection), 255, 0, 0);
+//                    rc.setIndicatorDot(rc.getLocation().add(bugDirection), 255, 0, 0);
                     if (handedness == 0) {
                         bugDirection = bugDirection.rotateRight();
                     } else {
