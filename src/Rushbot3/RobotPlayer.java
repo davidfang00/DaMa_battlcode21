@@ -265,7 +265,7 @@ public strictfp class RobotPlayer {
         if (buildInfluence < 25) {
             buildBool = Math.random() > .4;
             if (turnCount < 200){
-                buildInfluence = 25;
+                buildInfluence = 21;
             } else {
                 buildInfluence = muckStrength;
             }
@@ -583,6 +583,13 @@ public strictfp class RobotPlayer {
             if (tryMove(directionality)){
                 System.out.println("I moved directionally toward "+ directionality + " !");
                 return;
+            } else if (!rc.canSenseLocation(currentloc.add(directionality))) { // Hit map edge
+                if (handedness == 0) {
+                    directionality = directionality.rotateRight().rotateRight();
+                } else {
+                    directionality = directionality.rotateLeft().rotateLeft();
+                }
+                System.out.println("I hit the map edge! Going in direction " +directionality + " now!");
             } else {
                 if (tryMove(findBestDirection())) {
                     System.out.println("Could not move directionally, so I moved randomly!");
