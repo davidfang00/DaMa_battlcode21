@@ -1,4 +1,4 @@
-package Rushbot2;
+package Defbot2;
 import battlecode.common.*;
 
 import java.util.*;
@@ -30,6 +30,8 @@ public strictfp class RobotPlayer {
             Direction.WEST,
     };
 
+
+
     static int turnCount;
     static MapLocation enemyBaseLoc = new MapLocation(0, 0);
     static int homeID;
@@ -38,9 +40,11 @@ public strictfp class RobotPlayer {
     static int handedness;
     static Set<Integer> flagsSeen = new HashSet<Integer>();
     static Set<Integer> seenMucks = new HashSet<Integer>();
+    static Set<Integer> defPolis = new HashSet<Integer>();
     static Set<MapLocation> enemyBasesToCapture = new HashSet<MapLocation>();
     static Set<MapLocation> enemyBasesCaptured = new HashSet<MapLocation>();
     static int muckStrength = 5;
+    static int defStrength = 15;
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -120,7 +124,13 @@ public strictfp class RobotPlayer {
         for (RobotInfo ally : sensedAlliesCloseby) {
             if (ally.type == RobotType.MUCKRAKER && !seenMucks.contains(ally.ID)){
                 seenMucks.add(ally.ID);
+            } else if (ally.type == RobotType.POLITICIAN && ally.getInfluence() == defStrength) {
+            	defPolis.add(ally.ID);
             }
+        }
+
+        if (turnCount == 1) {
+            buildRobot(RobotType.SLANDERER, currInfluence);
         }
 
 //        // Get flag info from mucks (updated version)
@@ -167,6 +177,23 @@ public strictfp class RobotPlayer {
 //            }
 //        }
 
+        // Check if we have all defensive politicians
+        for (int polID : defPolis) {
+            if (!rc.canGetFlag(polID)) {
+                defPolis.remove(polID);
+                // add code that sets poliPos to false
+            }
+        }
+        int maxSize = 8;
+        if (turnCount < 200) {
+            maxSize = (turnCount/25) + 1;
+        }
+        if (defPolis.size() < maxSize && currInfluence >= defStrength+5 && turnCount > 10) {
+    		buildRobot(RobotType.POLITICIAN, defStrength);
+    		return;
+        }
+
+
         // Get flag info from mucks
         for (int muckID : seenMucks) {
             if (rc.canGetFlag(muckID)){
@@ -182,6 +209,7 @@ public strictfp class RobotPlayer {
                 seenMucks.remove(muckID);
             }
         }
+
 
         //There is a target base to go for
         if (enemyBaseLoc.x != 0) {
@@ -295,6 +323,7 @@ public strictfp class RobotPlayer {
         MapLocation currentloc = rc.getLocation();
         int actionRadius = rc.getType().actionRadiusSquared;
         int senseRadius = rc.getType().sensorRadiusSquared;
+        int polInfluence = rc.getInfluence();
         RobotInfo[] attackable = rc.senseNearbyRobots(actionRadius, enemyTeam);
         RobotInfo[] attackableNeutral = rc.senseNearbyRobots(actionRadius, Team.NEUTRAL);
         RobotInfo[] sensed = rc.senseNearbyRobots(senseRadius, enemyTeam);
@@ -303,6 +332,9 @@ public strictfp class RobotPlayer {
 
         boolean seeMurkorPol = false;
 
+
+
+        // sets home or directions
         if (turnCount <= 12) {
             for (RobotInfo ally :rc.senseNearbyRobots(2, allyTeam)) {
                 if (ally.getType().canBid()){
@@ -313,6 +345,44 @@ public strictfp class RobotPlayer {
         } else if (turnCount > 800) {
             directionality = Direction.CENTER;
         }
+
+
+
+        // DEFENSE YAAY
+
+        Map<Direction, Direction> perpendicular = new HashMap<Direction, Direction>();
+        for (int i = 0; i < 8; i++) {
+            int j = (i+6)%8;
+            perpendicular.put(directions[i],directions[j]);
+        }
+
+        if (polInfluence == defStrength) {
+            for (RobotInfo enemy : attackable) {
+                if (rc.canEmpower(actionRadius)){
+                    rc.empower(actionRadius);
+                    return;
+                }
+            }
+            if (currentloc.distanceSquaredTo(homeLoc) < 10) {
+            	Direction dirMove = homeLoc.directionTo(currentloc);
+                if (rc.canMove(dirMove)) {
+                    rc.move(dirMove);
+                }
+            } else if (currentloc.distanceSquaredTo(homeLoc) > 30) {
+            	Direction dirMove = currentloc.directionTo(homeLoc);
+            	if (rc.canMove(dirMove)) {
+                    rc.move(dirMove);
+                }
+            } else {
+                Direction dirMove = perpendicular.get(currentloc.directionTo(homeLoc));
+                if (rc.canMove(dirMove)) {
+                    rc.move(dirMove);
+                }
+            }
+            return;
+        }
+            
+
 
         // Can attack an enemy base or muckraker
         for (RobotInfo enemy : attackable) {

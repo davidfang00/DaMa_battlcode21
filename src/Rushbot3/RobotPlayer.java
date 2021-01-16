@@ -1,4 +1,4 @@
-package Rushbot2;
+package Rushbot3;
 import battlecode.common.*;
 
 import java.util.*;
@@ -40,7 +40,7 @@ public strictfp class RobotPlayer {
     static Set<Integer> seenMucks = new HashSet<Integer>();
     static Set<MapLocation> enemyBasesToCapture = new HashSet<MapLocation>();
     static Set<MapLocation> enemyBasesCaptured = new HashSet<MapLocation>();
-    static int muckStrength = 5;
+    static int muckStrength = 1;
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -123,6 +123,9 @@ public strictfp class RobotPlayer {
             }
         }
 
+        if (turnCount == 1) {
+            buildRobot(RobotType.SLANDERER, currInfluence);
+        }
 //        // Get flag info from mucks (updated version)
 //        for (int muckID : seenMucks) {
 //            if (rc.canGetFlag(muckID)) {

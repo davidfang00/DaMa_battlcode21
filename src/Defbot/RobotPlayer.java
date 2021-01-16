@@ -30,6 +30,8 @@ public strictfp class RobotPlayer {
             Direction.WEST,
     };
 
+
+
     static int turnCount;
     static MapLocation enemyBaseLoc = new MapLocation(0, 0);
     static int homeID;
@@ -39,6 +41,16 @@ public strictfp class RobotPlayer {
     static Set<Integer> flagsSeen = new HashSet<Integer>();
     static Set<Integer> seenMucks = new HashSet<Integer>();
     static Set<Integer> defPolis = new HashSet<Integer>();
+    static boolean[] poliPos = {
+    	false,
+    	false,
+    	false,
+    	false,
+    	false,
+    	false,
+    	false,
+    	false,
+    };
     static Set<MapLocation> enemyBasesToCapture = new HashSet<MapLocation>();
     static Set<MapLocation> enemyBasesCaptured = new HashSet<MapLocation>();
 
@@ -170,14 +182,35 @@ public strictfp class RobotPlayer {
 //        }
 
         // Check if we have all defensive politicians
+        Set<Integer> allDefIDs = new HashSet<Integer>();
+        for (int i=0; i<8; i++) {
+        	allDefIDs.add(i);
+        }
+        Set<Integer> curDefIDs = new HashSet<Integer>();
         for (int polID : defPolis) {
-            if (!rc.canGetFlag(polID)){
+            if (!rc.canGetFlag(polID)) {
                 defPolis.remove(polID);
+                // add code that sets poliPos to false
+            } else {
+            	curDefIDs.add(rc.getFlag(polID));
+            }
         }
-        if (defPolis.size < 8 && currInfluence >= 20) {
-        	buildRobot(RobotType.POLITICIAN, 15);
-        	return;
+        allDefIDs.removeAll(curDefIDs);
+        Iterator<Integer> possibleMiss = allDefIDs.iterator();
+        while (possibleMiss.hasNext()) {
+        	int dirIndex = possibleMiss.next();
+	        Direction dirSpawn = directions[dirIndex];
+	        // Direction dirSpawn = Direction.NORTHEAST;
+	        if (defPolis.size() < 8 && currInfluence >= 25 && turnCount > 10 && !poliPos[dirIndex]) {
+	        	if (rc.canBuildRobot(RobotType.POLITICIAN, dirSpawn, 20)) {
+	        		rc.buildRobot(RobotType.POLITICIAN, dirSpawn, 20);
+	        		poliPos[dirIndex] = true;
+	        		return;
+	        	}
+	        }
         }
+
+        
 
 
 
@@ -319,12 +352,31 @@ public strictfp class RobotPlayer {
 
         boolean seeMurkorPol = false;
 
+
+        Map<Direction, Integer> arrayIndex = new HashMap<Direction, Integer>();
+        for (int i = 0; i < 8; i++) {
+            arrayIndex.put(directions[i],i);
+        }
+
+        Map<Direction, Direction> opposite = new HashMap<Direction, Direction>();
+        for (int i = 0; i < 8; i++) {
+            int j = (i+4)%8;
+            opposite.put(directions[i],directions[j]);
+        }
+
+
         // sets home or directions
         if (turnCount <= 12) {
             for (RobotInfo ally :rc.senseNearbyRobots(2, allyTeam)) {
                 if (ally.getType().canBid()){
                     homeID = ally.getID();
                     homeLoc = ally.getLocation();
+                    if (polInfluence == 20) {
+                    	int index = arrayIndex.get(opposite.get(currentloc.directionTo(homeLoc)));
+                    	if (rc.canSetFlag(index)) {
+                    		rc.setFlag(index);
+                    	}
+                    }
                 }
             }
         } else if (turnCount > 800) {
@@ -334,12 +386,133 @@ public strictfp class RobotPlayer {
 
 
         // DEFENSE YAAY
-        if (polInfluence == 15) {
-        	// check if within range of a desired location
-        		// check if empty
-        		// if not, continue to next empty position
-        	// else if close to EC, move away
-        	// else move towards the EC (too far)
+
+        // Map<Direction, Direction> perpendicular = new HashMap<Direction, Direction>();
+        // for (int i = 0; i < 8; i++) {
+        //     int j = (i+6)%8;
+        //     perpendicular.put(directions[i],directions[j]);
+        // }
+
+        if (polInfluence == 20) {
+            for (RobotInfo enemy : attackable) {
+                    if (rc.canEmpower(actionRadius)){
+                        rc.empower(actionRadius);
+                        return;
+                    }
+            }
+            if (currentloc.distanceSquaredTo(homeLoc) < 30) {
+            	Direction dirMove = opposite.get(currentloc.directionTo(homeLoc));
+            	if (tryMove(dirMove)) {
+            		return;
+            	} else {
+            		return;
+            	}
+            } else if (currentloc.distanceSquaredTo(homeLoc) > 40) {
+            	Direction dirMove = currentloc.directionTo(homeLoc);
+            	if (tryMove(dirMove)) {
+            		return;
+            	} else {
+            		return;
+            	}
+            } else {
+            	return;
+            }
+            
+
+            // Direction dirMove = Direction.CENTER;
+            // if ()
+            // check if within range of any of the 8 desired location
+            // int x = 0;
+            // int y = 0;
+            // boolean inRange = false;
+            // for (int i = 0; i < 8; i++) {
+            //     x = 0;
+            //     y = 0;
+            //     switch (i) {
+            //         case 1:
+            //             x = 6;
+            //             break;
+            //         case 2:
+            //             x = -6;
+            //             break;
+            //         case 3:
+            //             y = 6;
+            //             break;
+            //         case 4:
+            //             y = -6;
+            //             break;
+            //         case 5:
+            //             x = 4;
+            //             y = 4;
+            //             break;
+            //         case 6:
+            //             x = -4;
+            //             y = -4;
+            //             break;
+            //         case 7:
+            //             x = 4;
+            //             y = -4;
+            //             break;
+            //         case 8:
+            //             x = -4;
+            //             y = 4;
+            //             break;
+            //     }
+            //     MapLocation polDest = homeLoc.translate(x,y);
+            //     if (!currentloc.equals(polDest)) {
+            //     	Direction dirMove = currentloc.directionTo(polDest);
+	           //      if (tryMove(dirMove)) {
+	           //      	return;
+	           //      }
+	           //  } else {
+	           //  	return;
+	            // }
+                // MapLocation polDest = homeLoc.translate(x,y);
+                // if (currentloc.equals(polDest)) {
+                //     return;
+                // }
+                // if (rc.canSenseLocation(polDest)) {
+                //     inRange = true;
+                //     if (!rc.isLocationOccupied(polDest)) {
+                //         //move towards the desired position
+                //         Direction dirMove = currentloc.directionTo(polDest);
+                //         if (rc.canMove(dirMove)) {
+                //             rc.move(dirMove);
+                //             return;
+                //         }
+                //     } else if (currentloc.distanceSquaredTo(homeLoc) > 16) {
+                //         Direction dirMove = currentloc.directionTo(homeLoc);
+                //         if (rc.canMove(dirMove)) {
+                //                 rc.move(dirMove);
+                //                 return;
+                //         }
+                //     } else {
+                //         Direction dirMove = perpendicular.get(currentloc.directionTo(homeLoc));
+                //         if (rc.canMove(dirMove)) {
+                //                 rc.move(dirMove);
+                //                 return;
+                //         }
+                //     }
+                // }
+            // }
+            // if (!inRange) {
+            //     if (currentloc.distanceSquaredTo(homeLoc) < 8) {
+            //         // Direction dirMove = opposite.get(currentloc.directionTo(homeLoc));
+            //         Direction dirMove = Direction.EAST;
+            //         if (rc.canMove(dirMove)) {
+            //                 rc.move(dirMove);
+            //                 return;
+            //         }
+            //         // else if close to EC, move away
+            //     } else {
+            //         // else move towards the EC (too far)
+            //         Direction dirMove = currentloc.directionTo(homeLoc);
+            //         if (rc.canMove(dirMove)) {
+            //                 rc.move(dirMove);
+            //                 return;
+            //         }
+            //     }
+            // }
         }
 
 
