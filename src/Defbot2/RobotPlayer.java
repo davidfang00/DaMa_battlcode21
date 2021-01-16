@@ -363,12 +363,12 @@ public strictfp class RobotPlayer {
                     return;
                 }
             }
-            if (currentloc.distanceSquaredTo(homeLoc) < 10) {
+            if (currentloc.distanceSquaredTo(homeLoc) < 25) {
             	Direction dirMove = homeLoc.directionTo(currentloc);
                 if (rc.canMove(dirMove)) {
                     rc.move(dirMove);
                 }
-            } else if (currentloc.distanceSquaredTo(homeLoc) > 30) {
+            } else if (currentloc.distanceSquaredTo(homeLoc) > 45) {
             	Direction dirMove = currentloc.directionTo(homeLoc);
             	if (rc.canMove(dirMove)) {
                     rc.move(dirMove);
