@@ -40,7 +40,7 @@ public strictfp class RobotPlayer {
     static Set<Integer> seenMucks = new HashSet<Integer>();
     static Set<MapLocation> enemyBasesToCapture = new HashSet<MapLocation>();
     static Set<MapLocation> enemyBasesCaptured = new HashSet<MapLocation>();
-    static int muckStrength = 1;
+    static int muckStrength = 5;
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
